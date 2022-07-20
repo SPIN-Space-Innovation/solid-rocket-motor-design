@@ -24,5 +24,6 @@ double GRAIN[Length+1] = {
     100e-3 //Length
 };
 
-int BurningCase = 1; //1 -> not full combustion
-                     //2 -> full combustion
+double BurningCaseCoef = 0.26; //1 -> great combustion
+                               //0 -> bad combustion
+//double tc = 0.4;

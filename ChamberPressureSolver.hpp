@@ -8,34 +8,13 @@
 double pi = 2*acos(0);
 
 double BurningArea(double r){
-    switch (BurningCase)
-    {
-    case 1:
-        return GRAIN[NumberOfGrains]* 2*pi*GRAIN[Length]*r;
-        break;
-    case 2:
-    return GRAIN[NumberOfGrains]*(2*pi*r*(GRAIN[Length] - 2*(r - GRAIN[InnerDiametre]/2)) + 2*(pi*pow(GRAIN[OutDiametre],2)/4 - pi*r*r));
-        break;
-    default:
-        break;
-    }
+    return GRAIN[NumberOfGrains]*(2*pi*r*(GRAIN[Length] - 2*BurningCaseCoef*(r - GRAIN[InnerDiametre]/2)) + 2*BurningCaseCoef*(pi*pow(GRAIN[OutDiametre],2)/4 - pi*r*r));
 }
 double density_0(double p_0){
     return p_0/(KNDX_PROPELLANT[GasConstant] * KNDX_PROPELLANT[CombustionTemperature]);
 }
 double EmptyVolume(double r){
-    switch (BurningCase)
-    {
-    case 1:
-        return GRAIN[NumberOfGrains]* pi*GRAIN[Length]*r*r + GRAIN[NumberOfGaps]*pi*GRAIN[Gap]*GRAIN[OutDiametre];
-        break;
-    case 2:
-        return pi*(GRAIN[Length] - 2*(r - GRAIN[InnerDiametre]/2))*r*r + 2*(r - GRAIN[InnerDiametre]/2)*(pi*pow(GRAIN[OutDiametre],2)/4 - pi*r*r) + GRAIN[NumberOfGaps]*pi*GRAIN[Gap]*GRAIN[OutDiametre];
-        break;
-    default:
-        break;
-    }
-    return GRAIN[NumberOfGrains]* pi*GRAIN[Length]*r*r;
+    return pi*(GRAIN[Length] - 2*BurningCaseCoef*(r - GRAIN[InnerDiametre]/2))*r*r + 2*BurningCaseCoef*(r - GRAIN[InnerDiametre]/2)*(pi*pow(GRAIN[OutDiametre],2)/4 - pi*r*r) + GRAIN[NumberOfGaps]*pi*GRAIN[Gap]*GRAIN[OutDiametre];
 }
 
 double gamma = KNDX_PROPELLANT[SpecificHeatRatio];
@@ -89,7 +68,12 @@ double k4_f2(double r, double p_0, double dt, double A_t){
     return f2(r + dt*k3_f2(r,p_0,dt,A_t),p_0 + dt*k3_f1(r,p_0,dt,A_t),A_t);
 }
 
-void RungeKutta4(double A_throat, double Dt, std::vector <double> &t, std::vector <double> &R, std::vector <double> &P_0, std::string datfile){
+std::vector <double> t;
+std::vector <double> R;
+std::vector <double> P_0;
+
+void RungeKutta4(double A_throat, double Dt, std::string datfile){
+    
     t.push_back(0);
     R.push_back(GRAIN[InnerDiametre]/2);
     P_0.push_back(AmbientPressure);
