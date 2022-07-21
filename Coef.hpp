@@ -24,6 +24,8 @@ double GRAIN[Length+1] = {
     100e-3 //Length
 };
 
-double BurningCaseCoef = 0.26; //1 -> great combustion
+double Sy = 200e6; // Yield strength of casing material
+
+double BurningCaseCoef = 1; //1 -> great combustion
                                //0 -> bad combustion
-//double tc = 0.4;
+double tc = 0.3;
