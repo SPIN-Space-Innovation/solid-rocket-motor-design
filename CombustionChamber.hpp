@@ -14,6 +14,14 @@ public:
 std::vector <double> t;
 std::vector <double> R;
 std::vector <double> P_0;
+double MinThickness_;
+double CharacteristicVelocity_;
+
+CombustionChamber(double A_throat_, double Dt_, std::string datfile_,double SafetyFactor_){
+    RungeKutta4(A_throat_,Dt_,datfile_);
+    MinThickness_ = MinThickness(SafetyFactor_);
+    CharacteristicVelocity_ = CharacteristicVelocity(A_throat_,Dt_);
+}
 
 CombustionChamber() = default;
 CombustionChamber(const CombustionChamber &other) = default;
