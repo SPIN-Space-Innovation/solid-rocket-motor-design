@@ -16,16 +16,16 @@ double KNDX_PROPELLANT[GasConstant+1] = {
     8.314463/KNDX_PROPELLANT[ExchaustMolarMass] //GasConstant
 };
 double GRAIN[Length+1] = {
-    4, //NumberOfGrains
-    0, //NumberOfGaps
+    5, //NumberOfGrains
+    6, //NumberOfGaps
     5e-3, //Gap
     20e-3, //InnerDiametre
-    56e-3, //OutDiametre
-    100e-3 //Length
+    80e-3, //OutDiametre
+    70e-3 //Length
 };
 
 double Sy = 200e6; // Yield strength of casing material
 
 double BurningCaseCoef = 1; //1 -> great combustion
                                //0 -> bad combustion
-double tc = 0.3;
+double tc = 0.2;

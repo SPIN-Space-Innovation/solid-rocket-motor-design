@@ -11,16 +11,24 @@ double pi = 2*acos(0);
 class CombustionChamber{
 
 public:
-std::vector <double> t;
-std::vector <double> R;
-std::vector <double> P_0;
-double MinThickness_;
-double CharacteristicVelocity_;
+std::vector <double> t; // vector of time moments
+std::vector <double> R; // vector of grain's inner radius
+std::vector <double> P_0; // vector of chamber pressure
 
-CombustionChamber(double A_throat_, double Dt_, std::string datfile_,double SafetyFactor_){
+double MinThickness_; // casing minimum thickness
+double CharacteristicVelocity_; // characteristic velocity ( c* )
+double p_max_; // maximum pressure
+
+// A_throat_ is the cross section area of the throat
+// Dt_ is the timestep, which will be used in the runge kutta solver
+// datfile_ will be the .dat file in which t and P_0 vectors will be stored
+// SafetyFactor is the safety factor for the calculation of the casing's minimum thickness ( >1 )
+CombustionChamber(double A_throat_, double Dt_, std::string datfile_,double SafetyFactor_) 
+{
     RungeKutta4(A_throat_,Dt_,datfile_);
     MinThickness_ = MinThickness(SafetyFactor_);
     CharacteristicVelocity_ = CharacteristicVelocity(A_throat_,Dt_);
+    p_max_ = *max_element(P_0.begin(), P_0.end());
 }
 
 CombustionChamber() = default;
@@ -28,6 +36,7 @@ CombustionChamber(const CombustionChamber &other) = default;
 ~CombustionChamber() = default;
 
 
+// temperature function 
 double T(double time){
     if (time<tc)
     {
@@ -40,12 +49,15 @@ double T(double time){
     
 }
 
+// total burning area
 double BurningArea(double r){
     return GRAIN[NumberOfGrains]*(2*pi*r*(GRAIN[Length] - 2*BurningCaseCoef*(r - GRAIN[InnerDiametre]/2)) + 2*BurningCaseCoef*(pi*pow(GRAIN[OutDiametre],2)/4 - pi*r*r));
 }
+// density of the gas inside the chamber
 double density_0(double p_0, double time){
     return p_0/(KNDX_PROPELLANT[GasConstant] * T(time));
 }
+// empty volume
 double EmptyVolume(double r){
     return pi*(GRAIN[Length] - 2*BurningCaseCoef*(r - GRAIN[InnerDiametre]/2))*r*r + 2*BurningCaseCoef*(r - GRAIN[InnerDiametre]/2)*(pi*pow(GRAIN[OutDiametre],2)/4 - pi*r*r) + GRAIN[NumberOfGaps]*pi*GRAIN[Gap]*GRAIN[OutDiametre];
 }
@@ -101,6 +113,8 @@ double k4_f2(double r, double p_0, double dt, double A_t, double time){
     return f2(r + dt*k3_f2(r,p_0,dt,A_t,time),p_0 + dt*k3_f1(r,p_0,dt,A_t,time),A_t,time);
 }
 
+
+//solver for the system of the 2 de
 void RungeKutta4(double A_throat, double Dt, std::string datfile){
     
     t.push_back(0);
@@ -123,7 +137,7 @@ void RungeKutta4(double A_throat, double Dt, std::string datfile){
         if (Results.is_open())
         {
             for(int i = 0; i < t.size(); ++i){
-                Results<<t.at(i)<<"   "<<P_0.at(i)<<"\n";
+                Results<<t.at(i)<<"   "<<P_0.at(i)/1e5<<"\n";
             }
             Results.close();
         }
