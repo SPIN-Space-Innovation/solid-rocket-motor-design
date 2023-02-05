@@ -59,7 +59,8 @@ double T(double time){
 
 // function to calculate the total burning area taking as input  the grain inner radius, r
 double BurningArea(double r){
-    return GRAIN[NumberOfGrains]*(2*pi*r*(GRAIN[Length] - 2*BurningCaseCoef*(r - GRAIN[InnerDiametre]/2)) + 2*BurningCaseCoef*(pi*pow(GRAIN[OutDiametre],2)/4 - pi*r*r));
+    double l = GRAIN[Length] - 2*BurningCaseCoef*(r - GRAIN[OutDiametre]/2);
+    return GRAIN[NumberOfGrains]*(2*pi*r*l + BurningCaseCoef*2*(pi*pow(GRAIN[OutDiametre],2)/4 - pi*r*r));
 }
 // function to calculate the density of the gas inside the chamber, using the perfect gas law and taking as inputs the time moment, time and the pressure
 double density_0(double p_0, double time){
@@ -67,7 +68,8 @@ double density_0(double p_0, double time){
 }
 // function to calculate the empty volume inside the chamber taking as input the grain inner radius, r
 double EmptyVolume(double r){
-    return GRAIN[NumberOfGrains]*(  pi*r*r*(GRAIN[Length] - 2*(r - GRAIN[InnerDiametre]/2)) + 2*(r - GRAIN[InnerDiametre]/2)*pi*(pow(GRAIN[OutDiametre],2)/4 - r*r)  ) + GRAIN[NumberOfGaps]*pi*GRAIN[Gap]*pow(GRAIN[OutDiametre],2)/4;
+    double l = GRAIN[Length] - 2*BurningCaseCoef*(r - GRAIN[OutDiametre]/2);
+    return GRAIN[NumberOfGaps]*pi*pow(GRAIN[OutDiametre], 2)*GRAIN[Gap]/4  +  GRAIN[NumberOfGrains]*pi*r*r*l  +  GRAIN[NumberOfGrains]*pow(GRAIN[OutDiametre], 2)*(GRAIN[Length]-l)/4;
 }
 // gamma constant of the exhaust gasses
 double gamma = KNDX_PROPELLANT[SpecificHeatRatio];
@@ -116,33 +118,25 @@ double AMR(int CASE){
     }
 
 
-// a, b, c, m_n, d function used to calculate f1 function
+// 
 // the system of the 2 odes is written in the form dp/dt = f1(r, p, t), dr/dt = f2(r, p, t)
-double a(double r, double p_0){
-    return KNDX_PROPELLANT[BurnRateCoef]   *   pow(p_0   ,   KNDX_PROPELLANT[BurnRateExponent]);
-}
-double b(double r, double p_0, double time){
-    return (KNDX_PROPELLANT[Density]   -   density_0(p_0,time));
-}
+
 double m_n(double r, double p_0, double time){
-    //double p_a = 1e5;
-    //double M_e = sqrt((2/(gamma-1))*(pow(p_0/p_a, (gamma-1)/gamma) - 1));
-    //if (M_e < AMR(sub))
-    //{
-    //   return p_0 * A_e_ * sqrt((2*gamma/(gamma-1)) * (1/(KNDX_PROPELLANT[GasConstant]*KNDX_PROPELLANT[CombustionTemperature])) * pow(p_0/p_a, 2/gamma) * pow(1-p_a/p_0, (gamma-1)/gamma));
-    //
-    //}
-    //else{
-        return p_0   *   A_t_   *   sqrt(gamma   *   pow(2/(gamma+1),(gamma+1)/(2*(gamma-1)))   /   (KNDX_PROPELLANT[GasConstant]   *   T(time)));
-    //}
-}
-double d(double r, double p_0, double time){
-    return (KNDX_PROPELLANT[GasConstant]   *   T(time))   /   EmptyVolume(r);
+    double p_a = 1e5;
+    double M_e = sqrt((2/(gamma-1))*(pow(p_0/p_a, (gamma-1)/gamma) - 1));
+    if (M_e < AMR(sub))
+    {
+      return p_0  *  A_e_  *  sqrt(2*gamma/(gamma-1) * (1/KNDX_PROPELLANT[GasConstant]*T(time)) * pow(p_a/p_0, 2/gamma) * (1 - pow(p_a/p_0, (gamma-1)/gamma)));
+    
+    }
+    else{
+        return p_0   *   A_t_   *   sqrt(gamma/(KNDX_PROPELLANT[GasConstant] * T(time)))  *  pow(2/(gamma+1) , (gamma+1)/(2*(gamma-1)));
+    }
 }
 
 // function to calculate the value of f1 
 double f1(double r, double p_0, double time){
-    return (BurningArea(r) * a(r,p_0) * b(r,p_0,time) - m_n(r,p_0,time)) * d(r,p_0,time);
+    return (BurningArea(r)  *  KNDX_PROPELLANT[BurnRateCoef]   *   pow(p_0,KNDX_PROPELLANT[BurnRateExponent])  *  (KNDX_PROPELLANT[Density]-density_0(p_0,time)) - m_n(r,p_0,time)) * KNDX_PROPELLANT[GasConstant]   *   T(time)   /   EmptyVolume(r);
 }
 
 // function to calculate the value of f2
