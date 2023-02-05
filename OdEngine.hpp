@@ -27,7 +27,9 @@ OdEngine(double A_throat_, double A_exit_, double Dt_, std::string datfile_,doub
 :A_e_(A_exit_), A_t_(A_throat_) 
 {
     //function to solve the system of the 2 ode, to find the functions p_c = p_c(t), R = R(t)
-    RungeKutta4(Dt_,datfile_);
+    CombustionPhase(Dt_);
+    DecompressionPhase(Dt_);
+    WrightToFile(datfile_);
     // function to calculate the minimum thickness of the casing taking as input the safety factor
     MinThickness_ = MinThickness(SafetyFactor_);
     //function to calculate the characteristic velocity (c*) 
@@ -174,7 +176,8 @@ double k4_f2(double r, double p_0, double dt, double time){
     return dt*f2(r + k3_f2(r,p_0,dt,time), p_0 + k3_f1(r,p_0,dt,time), time + dt);
 }
 
-void RungeKutta4(double Dt, std::string datfile){
+
+void CombustionPhase(double Dt){
     
     time_.push_back(0);
     R_.push_back(GRAIN[InnerDiametre]/2);
@@ -191,13 +194,37 @@ void RungeKutta4(double Dt, std::string datfile){
         //std::cout<<t.back()<<"    "<<R.back()<<"    "<<P_0.back()/1e5<<"\n";
     }
 
+    
+}
+
+double f(double t, double p){
+    return - m_n(GRAIN[OutDiametre]/2, p, t)*KNDX_PROPELLANT[GasConstant]*T(t)/EmptyVolume(GRAIN[OutDiametre]/2);
+}
+
+void DecompressionPhase(double Dt){
+    double p_a = 1e5;
+    double k1,k2,k3,k4;
+    while (p_c_.back() > AmbientPressure)
+    {
+        
+        k1 = Dt*f(time_.back(),p_c_.back());
+        k2 = Dt*f(time_.back() + Dt/2, p_c_.back() + k1/2);
+        k3 = Dt*f(time_.back() + Dt/2, p_c_.back() + k2/2);
+        k4 = Dt*f(time_.back() + Dt, p_c_.back() + k3);
+
+        p_c_.push_back(p_c_.back() + (k1 + 2*k2 + 2*k3 + k4)/6);
+        time_.push_back(time_.back() + Dt);
+    }
+}
+
+void WrightToFile(std::string datfile){
     std::ofstream Results;
         Results.open(datfile);
         if (Results.is_open())
         {
-            Results<<"# time    pressure    mass flow rate"<<"\n";
+            Results<<"# time    pressure"<<"\n";
             for(int i = 0; i < time_.size(); ++i){
-                Results<<time_.at(i)<<"         "<<p_c_.at(i)/1e5<<"        "<<m_n(0,p_c_.at(i),time_.at(i))<<"\n";
+                Results<<time_.at(i)<<"         "<<p_c_.at(i)/1e5<<"\n";
             }
             Results.close();
         }
@@ -217,6 +244,5 @@ double CharacteristicVelocity(double Dt){
     }
     return I*A_t_/Mp;
 }
-
 
 };
