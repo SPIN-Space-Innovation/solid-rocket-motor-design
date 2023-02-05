@@ -27,14 +27,14 @@ double KNDX_PROPELLANT[GasConstant+1] = {
     42.39e-3, //ExchaustMolarMass
     8.314463/KNDX_PROPELLANT[ExchaustMolarMass] //GasConstant
 };
-double LengthOfCasing = 375e-3;
+double LengthOfCasing = 362e-3;
 
 double GRAIN[Length+1] = {
     4, //NumberOfGrains
     5, //NumberOfGaps
     5e-3, //Gap
     20e-3, //InnerDiametre
-    56e-3, //OutDiametre
+    53e-3, //OutDiametre
     (LengthOfCasing - GRAIN[NumberOfGaps]*GRAIN[Gap])/4 //Length
 };
 
