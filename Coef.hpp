@@ -9,11 +9,11 @@ enum other_coef {NumberOfGrains, NumberOfGaps, Gap, InnerDiametre, OutDiametre, 
 double pi = 2*acos(0);
 
 // throat diametre
-double d_t = 15.56e-3;
+double d_t = 14e-3;
 // throat cross section area
 double A_t = 0.25*pi*pow(d_t,2);
 // exit diametre
-double d_e = 44.26e-3;
+double d_e = 37e-3;
 // throat cross section area
 double A_e = 0.25*pi*pow(d_e,2);
 
@@ -30,12 +30,13 @@ double KNDX_PROPELLANT[GasConstant+1] = {
 double LengthOfInsulator = 362e-3;
 
 double GRAIN[Length+1] = {
-    4, //NumberOfGrains
-    5, //NumberOfGaps
+    4.0, //NumberOfGrains
+    5.0, //NumberOfGaps
     5e-3, //Gap
     20e-3, //InnerDiametre
     53e-3, //OutDiametre
-    (LengthOfInsulator - GRAIN[NumberOfGaps]*GRAIN[Gap])/4 //Length
+    //88e-3, // length
+    (LengthOfInsulator - GRAIN[NumberOfGaps]*GRAIN[Gap])/GRAIN[NumberOfGrains] //Length
 };
 
 
@@ -46,4 +47,4 @@ double Sy = 200e6; // Yield strength of casing material
 
 double BurningCaseCoef = 1; //1 -> great combustion
                                //0 -> bad combustion
-double tc = 0.2;
+double tc = 0.001;
