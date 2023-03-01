@@ -16,6 +16,8 @@ class OdEngine{
     Eigen::RowVectorXd m_; // mass flow rate array
     Eigen::RowVectorXd p_e_; // exit pressure  array
     Eigen::RowVectorXd u_e_; // exit velocity array
+    Eigen::RowVectorXd Thrust_; // exit velocity array
+
     double A_e_; // exit cross section area
     double A_t_; // throat cross section area
     double MinThickness_; // casing minimum thickness
@@ -29,7 +31,7 @@ OdEngine(double A_throat_, double A_exit_, double Dt_, std::string datfile_,doub
     //function to solve the system of the 2 ode, to find the functions p_c = p_c(t), R = R(t)
     CombustionPhase(Dt_);
     DecompressionPhase(Dt_);
-    WrightToFile(datfile_);
+    WrightChamberPressureToFile(datfile_);
     
     //function to calculate the characteristic velocity (c*) 
     CharacteristicVelocity_ = CharacteristicVelocity(Dt_);
@@ -37,6 +39,8 @@ OdEngine(double A_throat_, double A_exit_, double Dt_, std::string datfile_,doub
     p_max_ = p_c_.maxCoeff();
     // function to calculate the minimum thickness of the casing taking as input the safety factor
     MinThickness_ = MinThickness(SafetyFactor_);
+
+
 }
 
 OdEngine() = default;
@@ -251,7 +255,7 @@ void DecompressionPhase(double Dt){
     }
 }
 
-void WrightToFile(std::string datfile){
+void WrightChamberPressureToFile(std::string datfile){
     std::ofstream Results;
         Results.open(datfile);
         if (Results.is_open())
@@ -277,5 +281,62 @@ double CharacteristicVelocity(double Dt){
     }
     return I*A_t_/Mp;
 }
+
+void ExitConditions(){
+    p_e_.resize(time_.size());
+    u_e_.resize(time_.size());
+    for (int i = 0; i < time_.size(); i++)
+    {
+        double M_e_sup = AMR(sup);
+        double p_e_sup = p_c_(i)*pow(1 + 0.5*(gamma-1)*pow(M_e_sup,2), gamma/(1-gamma));
+        double p_e_NSE = p_e_sup*(1 + (2*gamma/(gamma+1)*(pow(M_e_sup,2) - 1)));
+        
+        // supersonic isentropic case
+        if (p_e_NSE < AmbientPressure)
+        {
+            p_e_(i) = p_e_sup;
+            u_e_(i) = VelocityFromExitPressure(p_c_(i), p_e_sup, T(time_(i)));
+        }
+        else{
+            double p_e_sub = AMR(sub);
+            //subsonic isentropic case
+            if (p_e_sub > AmbientPressure)
+            {
+                p_e_(i) = AmbientPressure;
+                u_e_(i) = VelocityFromExitPressure(p_c_(i), p_e_(i),T(time_(i)));
+            }
+            // subsonic normal shock case
+            else{
+                double lamda = AmbientPressure*A_e/(p_c_(i)*A_t);
+                double M_e = sqrt(-1/(gamma-1) + sqrt(pow(gamma-1, -2) + (2/(gamma-1))*pow(2/(gamma+1), (gamma+1)/(gamma-1))*pow(lamda,-2)));
+                double p_0 = pow(1 + 0.5*(gamma-1)*M_e*M_e, gamma/(gamma-1))*AmbientPressure;
+                p_e_(i) = AmbientPressure;
+                u_e_(i) = VelocityFromExitPressure(p_0, p_e_(i),T(time_(i)));
+            }
+        }
+       
+    }
+    
+}
+
+void WrightExitPressureToFile(std::string datfile){
+    std::ofstream Results;
+        Results.open(datfile);
+        if (Results.is_open())
+        {
+            Results<<"# time    pressure"<<"\n";
+            for(int i = 0; i < time_.size()-1; ++i){
+                Results<<time_(i)<<"         "<<p_e_(i)/1e5<<"\n";
+            }
+            Results.close();
+        }
+}
+
+double VelocityFromExitPressure(double pc, double pe, double Tc){
+    double returnPressure = sqrt(2*(gamma/(gamma-1))*KNDX_PROPELLANT[ExchaustMolarMass]*Tc*(1 - pow(pe/pc, (gamma-1)/gamma)));
+    return returnPressure;
+}
+
+
 
 };
