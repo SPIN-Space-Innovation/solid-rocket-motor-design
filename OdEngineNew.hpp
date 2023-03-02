@@ -357,7 +357,7 @@ double TotalImpulse(){
     return I_t;
 }
 
-void WrightExitPressureToFile(std::string datfile){
+void WriteExitPressureToFile(std::string datfile){
     std::ofstream Results;
         Results.open(datfile);
         if (Results.is_open())
@@ -370,7 +370,7 @@ void WrightExitPressureToFile(std::string datfile){
         }
 }
 
-void WrightMassFlowRateToFile(std::string datfile){
+void WriteMassFlowRateToFile(std::string datfile){
     std::ofstream Results;
         Results.open(datfile);
         if (Results.is_open())
@@ -383,7 +383,7 @@ void WrightMassFlowRateToFile(std::string datfile){
         }
 }
 
-void WrightExitVelocityToFile(std::string datfile){
+void WriteExitVelocityToFile(std::string datfile){
     std::ofstream Results;
         Results.open(datfile);
         if (Results.is_open())
@@ -396,7 +396,7 @@ void WrightExitVelocityToFile(std::string datfile){
         }
 }
 
-void WrightThrustToFile(std::string datfile){
+void WriteThrustToFile(std::string datfile){
     std::ofstream Results;
         Results.open(datfile);
         if (Results.is_open())

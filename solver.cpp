@@ -9,10 +9,10 @@ int main(){
     
     OdEngine dummy(A_t,A_e,0.001,"ChamberPressure.dat", 2.5);
     dummy.ExitConditions();
-    dummy.WrightExitPressureToFile("exitPressure.dat");
-    dummy.WrightThrustToFile("Thrust.dat");
-    dummy.WrightExitVelocityToFile("Velocity.dat");
-    dummy.WrightMassFlowRateToFile("MassFlowRate.dat");
+    dummy.WriteExitPressureToFile("exitPressure.dat");
+    dummy.WriteThrustToFile("Thrust.dat");
+    dummy.WriteExitVelocityToFile("Velocity.dat");
+    dummy.WriteMassFlowRateToFile("MassFlowRate.dat");
     std::cout<<"c* = "<<dummy.CharacteristicVelocity_<<"\n";
     std::cout<<"t_min = "<<dummy.MinThickness_<<"\n";
     std::cout<<"p_max = "<<dummy.p_max_/1e5<<"\n";
