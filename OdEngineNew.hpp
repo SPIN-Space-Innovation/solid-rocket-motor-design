@@ -23,6 +23,7 @@ class OdEngine{
     double MinThickness_; // casing minimum thickness
     double CharacteristicVelocity_; // characteristic velocity ( c* )
     double p_max_; // maximum pressure
+    double TotalImpulse_; // total impulse
 
 // constructor 
 OdEngine(double A_throat_, double A_exit_, double Dt_, std::string datfile_,double SafetyFactor_)
@@ -83,7 +84,7 @@ double EmptyVolume(double r){
 // gamma constant of the exhaust gasses
 double gamma = KNDX_PROPELLANT[SpecificHeatRatio];
 
-// function to calculate the value of the mathematical function F(M,ratio) =  AMR(M,ratio) - ratio, as it is defined in the relation 4.9
+// function to calculate the value of the mathematical function F(M,ratio) =  MachNumberFromAreaMachNumberRelation(M,ratio) - ratio, as it is defined in the relation 4.9
 double F(double M, double RATIO){
     return (1/M)*pow((2/(gamma+1))*(1+((gamma-1)/2)*M*M),(gamma+1)/(2*(gamma-1)))-RATIO;
 }
@@ -95,9 +96,9 @@ double dF(double M){
     return a1*(M*M-1)*a2/a3;
 }
     
-    // area mach number relation, solved for the mach number using newton-raphson method, M_new = M_old - F(M_old)/[dF/dM(M_old)]
+    // area mach number relation, solved for the mach number using newton-raphson method, NozzleMassFlowRateew = M_old - F(M_old)/[dF/dM(M_old)]
     // CASE = sup or sub
-double AMR(int CASE){
+double MachNumberFromAreaMachNumberRelation(int CASE){
         double ratio = A_e_/A_t_;
         double gamma = KNDX_PROPELLANT[SpecificHeatRatio];
         double err = 1;
@@ -130,10 +131,10 @@ double AMR(int CASE){
 // 
 // the system of the 2 odes is written in the form dp/dt = f1(r, p, t), dr/dt = f2(r, p, t)
 
-double m_n(double r, double p_0, double time){
+double NozzleMassFlowRate(double p_0, double time){
     double p_a = 1e5;
     double M_e = sqrt((2/(gamma-1))*(pow(p_0/p_a, (gamma-1)/gamma) - 1));
-    if (M_e < AMR(sub))
+    if (M_e < MachNumberFromAreaMachNumberRelation(sub))
     {
       return p_0  *  A_e_  *  sqrt(2*gamma/(gamma-1) * (1/KNDX_PROPELLANT[GasConstant]*T(time)) * pow(p_a/p_0, 2/gamma) * (1 - pow(p_a/p_0, (gamma-1)/gamma)));
     
@@ -148,7 +149,7 @@ double f1(double r, double p_0, double time){
     return (KNDX_PROPELLANT[GasConstant]*T(time)/EmptyVolume(r))
     *(BurningArea(r)*KNDX_PROPELLANT[BurnRateCoef]*pow(p_0, KNDX_PROPELLANT[BurnRateExponent])
     *(KNDX_PROPELLANT[Density] - density_0(p_0,time))
-    -m_n(r,p_0,time));
+    -NozzleMassFlowRate(p_0,time));
 }
 
 // function to calculate the value of f2
@@ -224,7 +225,7 @@ void CombustionPhase(double Dt){
 }
 
 double f(double t, double p){
-    return - m_n(GRAIN[OutDiametre]/2, p, t)*KNDX_PROPELLANT[GasConstant]*T(t)/EmptyVolume(GRAIN[OutDiametre]/2);
+    return - NozzleMassFlowRate( p, t)*KNDX_PROPELLANT[GasConstant]*T(t)/EmptyVolume(GRAIN[OutDiametre]/2);
 }
 
 void DecompressionPhase(double Dt){
@@ -285,25 +286,47 @@ double CharacteristicVelocity(double Dt){
 void ExitConditions(){
     p_e_.resize(time_.size());
     u_e_.resize(time_.size());
-    for (int i = 0; i < time_.size(); i++)
+    Thrust_.resize(time_.size());
+    m_.resize(time_.size());
+    int k = 0;
+    int g = 1;
+    //std::cout<<"time            case            p_e_NSE             p_c             p_e_sup\n";
+    for (int i = 0; i < time_.size(); i++, k++)
     {
-        double M_e_sup = AMR(sup);
-        double p_e_sup = p_c_(i)*pow(1 + 0.5*(gamma-1)*pow(M_e_sup,2), gamma/(1-gamma));
-        double p_e_NSE = p_e_sup*(1 + (2*gamma/(gamma+1)*(pow(M_e_sup,2) - 1)));
+        double M_e_sup = MachNumberFromAreaMachNumberRelation(sup);
+        double p_e_sup = PressureFromMachNumber_Isentropic(p_c_(i),M_e_sup);
+        double p_e_NSE = p_e_sup*(
+                1 
+                + (2*gamma/(gamma+1)
+                *(M_e_sup*M_e_sup - 1))
+            );
+        
+        // if (k%g == 0)
+        // {
+        //     std::cout<<time_(i)<<"      ";
+        // }
+        
         
         // supersonic isentropic case
-        if (p_e_NSE < AmbientPressure)
+        if (AmbientPressure < p_e_NSE)
         {
             p_e_(i) = p_e_sup;
-            u_e_(i) = VelocityFromExitPressure(p_c_(i), p_e_sup, T(time_(i)));
+            u_e_(i) = VelocityFromExitPressure_Isentropic(p_c_(i), p_e_(i), T(time_(i)));
+            // if (k%g == 0){
+            //     std::cout<<"supersonic isentropic       "<<p_e_NSE/1e5<<"       "<<p_c_(i)/1e5<<"       "<<p_e_sup/1e5<<"\n";
+            // }
         }
         else{
-            double p_e_sub = AMR(sub);
+            double M_e_sub = MachNumberFromAreaMachNumberRelation(sub);
+            double p_e_sub = PressureFromMachNumber_Isentropic(p_c_(i),M_e_sub);
             //subsonic isentropic case
-            if (p_e_sub > AmbientPressure)
+            if (AmbientPressure > p_e_sub)
             {
                 p_e_(i) = AmbientPressure;
-                u_e_(i) = VelocityFromExitPressure(p_c_(i), p_e_(i),T(time_(i)));
+                u_e_(i) = VelocityFromExitPressure_Isentropic(p_c_(i), p_e_(i),T(time_(i)));
+                // if (k%g == 0){
+                //     std::cout<<"subsonic isentropic       "<<p_e_NSE/1e5<<"       "<<p_c_(i)/1e5<<"       "<<p_e_sup/1e5<<"         "<<p_e_sub/1e5<<"\n";
+                // }            
             }
             // subsonic normal shock case
             else{
@@ -311,12 +334,27 @@ void ExitConditions(){
                 double M_e = sqrt(-1/(gamma-1) + sqrt(pow(gamma-1, -2) + (2/(gamma-1))*pow(2/(gamma+1), (gamma+1)/(gamma-1))*pow(lamda,-2)));
                 double p_0 = pow(1 + 0.5*(gamma-1)*M_e*M_e, gamma/(gamma-1))*AmbientPressure;
                 p_e_(i) = AmbientPressure;
-                u_e_(i) = VelocityFromExitPressure(p_0, p_e_(i),T(time_(i)));
+                u_e_(i) = VelocityFromExitPressure_Isentropic(p_0, p_e_(i),T(time_(i)));
+                // if (k%g == 0){
+                //     std::cout<<"subsonic non-isentropic       "<<p_e_NSE/1e5<<"       "<<p_c_(i)/1e5<<"       "<<p_e_sup/1e5<<"         "<<p_e_sub/1e5<<"\n";
+                // }    
             }
         }
-       
+        m_(i) = NozzleMassFlowRate(p_c_(i),time_(i));
+        Thrust_(i) = m_(i)*u_e_(i) + (p_e_(i) - AmbientPressure)*A_e_;
     }
     
+    TotalImpulse_ = TotalImpulse();
+}
+
+double TotalImpulse(){
+    double I_t = 0;
+    double dt = time_(1) - time_(0);
+    for (int i = 0; i < Thrust_.size() - 2; i++)
+    {
+        I_t += dt*(Thrust_(i) + Thrust_(i+1))/2;
+    }
+    return I_t;
 }
 
 void WrightExitPressureToFile(std::string datfile){
@@ -332,9 +370,59 @@ void WrightExitPressureToFile(std::string datfile){
         }
 }
 
-double VelocityFromExitPressure(double pc, double pe, double Tc){
-    double returnPressure = sqrt(2*(gamma/(gamma-1))*KNDX_PROPELLANT[ExchaustMolarMass]*Tc*(1 - pow(pe/pc, (gamma-1)/gamma)));
+void WrightMassFlowRateToFile(std::string datfile){
+    std::ofstream Results;
+        Results.open(datfile);
+        if (Results.is_open())
+        {
+            Results<<"# time    mass flow rate"<<"\n";
+            for(int i = 0; i < time_.size()-1; ++i){
+                Results<<time_(i)<<"         "<<m_(i)<<"\n";
+            }
+            Results.close();
+        }
+}
+
+void WrightExitVelocityToFile(std::string datfile){
+    std::ofstream Results;
+        Results.open(datfile);
+        if (Results.is_open())
+        {
+            Results<<"# time    velocity"<<"\n";
+            for(int i = 0; i < time_.size()-1; ++i){
+                Results<<time_(i)<<"         "<<u_e_(i)<<"\n";
+            }
+            Results.close();
+        }
+}
+
+void WrightThrustToFile(std::string datfile){
+    std::ofstream Results;
+        Results.open(datfile);
+        if (Results.is_open())
+        {
+            Results<<"# time    thrust"<<"\n";
+            for(int i = 0; i < time_.size()-1; ++i){
+                Results<<time_(i)<<"         "<<Thrust_(i)<<"\n";
+            }
+            Results.close();
+        }
+}
+
+double PressureFromMachNumber_Isentropic(double pc, double M){
+    double returnPressure = 
+        pc
+        *pow(
+            1 + 0.5*(gamma-1)*M*M,
+            gamma/(1-gamma)
+        );
     return returnPressure;
+}
+
+double VelocityFromExitPressure_Isentropic(double pc, double pe, double Tc){
+    double returnVelocity = 
+        sqrt((2*gamma/(gamma-1))*KNDX_PROPELLANT[GasConstant]*Tc*(1 - pow(pe/pc, (gamma-1)/gamma)));
+    return returnVelocity;
 }
 
 
